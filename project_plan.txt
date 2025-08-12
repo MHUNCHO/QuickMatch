@@ -1,0 +1,164 @@
+Here is a clear, high level breakdown of how your Streamlit app works and how to rebuild it in Next.js 14 with React and TypeScript. It focuses on concepts and data flow so a React dev can reproduce the behaviour.
+
+# What the app does
+
+• Builds match fixtures from precomputed schedules for 1 to 4 courts
+• Lets you pick a date, courts, rounds, and a set of players
+• Maps numeric pairings from the schedule to real player names
+• Shows per court matches per round and accepts a score for each
+• Validates scores using badminton rules (win by two from 20 all, cap at 30)
+• Tracks wins, losses, and plus or minus per player and ranks a leaderboard
+• Supports skipping a round and shows simple timers for round duration
+• Autosaves the whole session and keeps rolling backups
+• Exports results to CSV and appends to an Excel history file
+
+# Data inputs
+
+• Precomputed schedules are stored by court count. Each row has
+num\_players, num\_rounds, round\_index, pairs
+• pairs is a string that encodes matches as pairs like (1,2) vs (3,4) repeated for each court slot
+• A player list lives in a simple CSV that you can extend inside the app
+
+Next.js version
+• Convert the four schedule CSV files to JSON once and ship them in /public or /data
+• Keep players in IndexedDB (Dexie) or a local JSON seed that grows in the browser
+
+# Core state (single session)
+
+• selected\_players (array of names)
+• player\_mapping (number index to chosen player name)
+• schedule\_df (array of rounds with a matches string per round)
+• scores (dictionary keyed by round and match index)
+• wins\_count, losses\_count, score\_difference (per player)
+• current\_round, skipped\_rounds
+• round\_start\_times, round\_end\_times
+• scoreboard (derived table)
+• selected\_date, num\_courts, num\_rounds
+
+Next.js version
+• Create a Zustand store for all of the above
+• Persist to IndexedDB for recovery and to keep rolling backups
+
+# Schedule generation
+
+1. User selects courts, players, and rounds
+2. The app filters the precomputed schedule for that combination
+3. It shuffles the selected players and creates a mapping from numeric slots to names
+4. It replaces every numeric pair in the pairs string with names and stores a matches string per round
+
+Next.js version
+• schedule.ts: load schedule JSON for the chosen court count and filter by num\_players and num\_rounds
+• replacePairsWithNames(pairString, mapping) returns a readable matches string
+
+# Score parsing and validation
+
+• parse\_score reads inputs like “21-18”, turns them into two integers, and calls is\_valid\_badminton\_score
+• Validation rules
+• Non negative integers and no draw
+• Winner is at least 21
+• If loser is below 20, winner must be exactly 21
+• From 20 all onward win by two, up to 30
+• 30 to 29 is valid (cap) and 30 to 28 is valid (win by two before 29 all)
+
+Next.js version
+• scoring.ts: a pure function isValidBadmintonScore(a, b)
+• Use React Hook Form with a Zod refine step that calls the function
+• Show a small helper message when input is invalid
+
+# Leaderboard computation
+
+• update\_stats applies each confirmed score to both teams
+• Recalculation is easy because all scores are in memory
+• calculate\_scoreboard builds rows \[Player, Matches, W/L, plus or minus]
+• Sort by wins then by plus or minus and assign ranks with ties
+
+Next.js version
+• A deriveScoreboard(state) function that consumes state.results or state.scores and returns rows for a table component
+
+# Round flow and timers
+
+• A round is complete when all its match scores are valid or when the round is skipped
+• current\_round moves forward only when earlier rounds are complete or skipped
+• For the active round the app starts a timestamp and later computes elapsed time when the round completes
+
+Next.js version
+• isRoundComplete(roundIndex) checks state.scores for that round
+• useEffect starts a timer when the active round mounts
+• Store startedAt and endedAt as ISO strings
+
+# Autosave and backups
+
+• On every change and also on a timed interval the app writes a JSON snapshot to disk and rotates backups
+• On load it tries to restore the most recent snapshot and then rebuilds derived stats
+
+Next.js version
+• Dexie schema
+• session table with one row named current
+• backups table that stores timestamped snapshots
+• A setInterval in the browser that writes a backup every few seconds
+• On first load, read session and hydrate the Zustand store
+
+# Export and history
+
+• format\_match\_results flattens each match into a row with date, players, and scores
+• CSV export is offered directly
+• Excel history is appended on save
+
+Next.js version
+• export.ts
+• exportCSV(rows) uses Papaparse and triggers a download
+• exportXLSX(rows) uses SheetJS and triggers a download
+• If you want a running history in the browser, keep a second Dexie table and let users export it whenever they want
+
+# Player management
+
+• The app loads a seed list, lets you add names, keeps a sorted list, and saves to CSV
+
+Next.js version
+• Keep a Players table in IndexedDB and seed it once from a small JSON file
+• The Add Player action inserts into IndexedDB and updates the in memory list
+
+# Feasibility rules for rounds
+
+• A feasible\_rounds lookup tells the UI which round counts make sense for a given number of players and courts
+• The round count selector is disabled until the current selection is valid
+
+Next.js version
+• Keep the same lookup as a constant module and use it to drive the round selector
+
+# UI structure in Next.js
+
+• Setup page
+• Date, courts, feasible rounds selector
+• Player picker grid with an Add Player input
+• Generate Schedule button
+
+• Play page
+• One section per round
+• Per round actions: Skip and Unskip
+• For each court: two team name blocks with a compact score input between them
+• Sitting Out list under the matches
+• Leaderboard section with a champion callout
+• Save History and Export Results buttons
+
+# Suggested React files
+
+• app/page.tsx (Setup)
+• app/play/page.tsx (Match entry and leaderboard)
+• store/session.ts (Zustand state and actions)
+• lib/schedule.ts (load and map schedules)
+• lib/scoring.ts (validation)
+• lib/export.ts (CSV and Excel)
+• lib/storage.ts (Dexie and backup rotation)
+• components/CourtCard.tsx, RoundCard.tsx, Leaderboard.tsx, FileDrop.tsx
+• types/domain.ts (Player, Pair, CourtSlot, Round, Schedule, GameScore, MatchResult)
+
+# What to keep identical when porting
+
+• The schedule filtering logic
+• The pair string replacement logic
+• The exact score validity rules
+• The rule that a round is complete only when every match is valid or the round is skipped
+• The ranking method (wins first, then plus or minus, with ties allowed)
+
+If you want, I can turn this into a checklist of Cursor tasks that creates the empty files, wires Zustand and Dexie, and stubs each function with the same names so the port stays one to one with your current logic.
