@@ -46,7 +46,33 @@ export default function SessionPage() {
     if (!session) return
 
     // Prepare the data for export
-    const exportData = {
+    const exportData: {
+      sessionInfo: {
+        id: string
+        date: string
+        gameMode: string
+        matchType: string
+        competitionLevel: string
+        numCourts: number
+        totalPlayers: number
+      }
+      matches: Array<{
+        round: number
+        court: number
+        team1: string
+        team2: string
+        score: string
+        winner: string
+      }>
+      leaderboard: Array<{
+        rank: number
+        player: string
+        wins: number
+        losses: number
+        winRate: string
+        scoreDifference: number
+      }>
+    } = {
       sessionInfo: {
         id: session.id,
         date: session.configuration.date,
@@ -89,7 +115,33 @@ export default function SessionPage() {
     document.body.removeChild(link)
   }
 
-  const generateCSV = (data: any) => {
+  const generateCSV = (data: {
+    sessionInfo: {
+      id: string
+      date: string
+      gameMode: string
+      matchType: string
+      competitionLevel: string
+      numCourts: number
+      totalPlayers: number
+    }
+    matches: Array<{
+      round: number
+      court: number
+      team1: string
+      team2: string
+      score: string
+      winner: string
+    }>
+    leaderboard: Array<{
+      rank: number
+      player: string
+      wins: number
+      losses: number
+      winRate: string
+      scoreDifference: number
+    }>
+  }) => {
     let csv = ''
 
     // Session Info
@@ -100,7 +152,7 @@ export default function SessionPage() {
     // Matches
     csv += 'Match Results\n'
     csv += 'Round,Court,Team 1,Team 2,Score,Winner\n'
-    data.matches.forEach((match: any) => {
+    data.matches.forEach((match) => {
       csv += `${match.round},${match.court},"${match.team1}","${match.team2}","${match.score}","${match.winner}"\n`
     })
     csv += '\n'
@@ -108,7 +160,7 @@ export default function SessionPage() {
     // Leaderboard
     csv += 'Final Leaderboard\n'
     csv += 'Rank,Player,Wins,Losses,Win Rate,Score Difference\n'
-    data.leaderboard.forEach((entry: any) => {
+    data.leaderboard.forEach((entry) => {
       csv += `${entry.rank},"${entry.player}",${entry.wins},${entry.losses},${entry.winRate},${entry.scoreDifference}\n`
     })
 
