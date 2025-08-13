@@ -9,26 +9,42 @@ interface CsvScheduleRow {
 }
 
 /**
- * Parses the pairs string from CSV format "(0,3);(1,2);(4,5);(6,7)"
- * Returns array of player pairs for each court
+ * Parses the pairs string from CSV format 
+ * For doubles: "(0,3);(1,2)" -> returns [[[0,3], [1,2]]] (2 teams per court)
+ * Returns array of teams for each court, where each team is an array of 2 players
  */
-function parsePairs(pairsString: string): number[][] {
-  return pairsString
+function parsePairs(pairsString: string, numCourts: number): number[][][] {
+  const pairs = pairsString
     .split(';')
     .map(pair => {
-      const match = pair.match(/\((\d+),(\d+)\)/)
+      const match = pair.match(/\(([^)]+)\)/)
       if (match) {
-        return [parseInt(match[1]), parseInt(match[2])]
+        const players = match[1].split(',').map(p => parseInt(p.trim()))
+        return players
       }
-      return [0, 0]
+      return []
     })
-    .filter(pair => pair[0] !== 0 || pair[1] !== 0)
+    .filter(pair => pair.length > 0)
+
+  // Group teams by court (2 teams per court for doubles)
+  const courtPairings: number[][][] = []
+  for (let court = 0; court < numCourts; court++) {
+    const courtIndex = court * 2
+    if (pairs[courtIndex] && pairs[courtIndex + 1]) {
+      // Each court has 2 teams
+      courtPairings.push([pairs[courtIndex], pairs[courtIndex + 1]])
+    } else {
+      courtPairings.push([]) // Empty court
+    }
+  }
+
+  return courtPairings
 }
 
 /**
  * Loads schedules from CSV data
  */
-export function loadSchedulesFromCsv(csvData: CsvScheduleRow[]): Schedule[] {
+export function loadSchedulesFromCsv(csvData: CsvScheduleRow[], numCourts: number): Schedule[] {
   const scheduleMap = new Map<string, Schedule>()
   
   csvData.forEach(row => {
@@ -39,7 +55,7 @@ export function loadSchedulesFromCsv(csvData: CsvScheduleRow[]): Schedule[] {
       scheduleMap.set(key, {
         id: `schedule-${row.num_players}-${row.num_rounds}`,
         name: `${row.num_players} Players - ${row.num_rounds} Rounds`,
-        numCourts: 2, // All CSV files are for 2 courts
+        numCourts: numCourts,
         numRounds: row.num_rounds,
         numPlayers: row.num_players,
         pairings: new Array(row.num_rounds).fill([]).map(() => []),
@@ -49,7 +65,7 @@ export function loadSchedulesFromCsv(csvData: CsvScheduleRow[]): Schedule[] {
     
     const schedule = scheduleMap.get(key)!
     // Add the round data to the pairings
-    schedule.pairings[row.round_index] = parsePairs(row.pairs)
+    schedule.pairings[row.round_index] = parsePairs(row.pairs, numCourts)
   })
   
   return Array.from(scheduleMap.values())
@@ -59,12 +75,6 @@ export function loadSchedulesFromCsv(csvData: CsvScheduleRow[]): Schedule[] {
  * Gets schedules for a specific number of courts
  */
 export function getSchedulesByCourts(numCourts: number): Schedule[] {
-  // For now, we only have 2-court schedules in CSV
-  // TODO: Load other court configurations when available
-  if (numCourts !== 2) {
-    return []
-  }
-  
   // This will be populated when we load the actual CSV data
   return []
 }

@@ -30,7 +30,7 @@ export interface Schedule {
   numCourts: number
   numRounds: number
   numPlayers: number
-  pairings: number[][][] // Array of rounds, each round has array of court assignments, each court has [player1, player2]
+  pairings: number[][][][] // Array of rounds, each round has array of courts, each court has array of teams, each team has array of players
   createdAt: Date
 }
 
