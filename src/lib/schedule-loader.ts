@@ -74,7 +74,7 @@ export function loadSchedulesFromCsv(csvData: CsvScheduleRow[], numCourts: numbe
 /**
  * Gets schedules for a specific number of courts
  */
-export function getSchedulesByCourts(numCourts: number): Schedule[] {
+export function getSchedulesByCourts(_numCourts: number): Schedule[] {
   // This will be populated when we load the actual CSV data
   return []
 }
@@ -90,7 +90,7 @@ export function getAllSchedules(): Schedule[] {
 /**
  * Gets a schedule by ID
  */
-export function getScheduleById(id: string): Schedule | undefined {
+export function getScheduleById(_id: string): Schedule | undefined {
   // This will be populated when we load the actual CSV data
   return undefined
 }

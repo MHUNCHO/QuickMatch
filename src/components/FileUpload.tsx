@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label'
 import { csvUtils, excelUtils } from '@/lib/file-utils'
 
 export function FileUpload() {
-  const [csvData, setCsvData] = useState<any[]>([])
-  const [excelData, setExcelData] = useState<any[]>([])
+  const [csvData, setCsvData] = useState<Record<string, unknown>[]>([])
+  const [excelData, setExcelData] = useState<Record<string, unknown>[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

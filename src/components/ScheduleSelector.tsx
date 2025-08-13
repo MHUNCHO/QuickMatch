@@ -78,7 +78,7 @@ export function ScheduleSelector() {
         })) as CsvScheduleRow[]
         const schedules = loadSchedulesFromCsv(rows, numCourts)
         setAllSchedules(schedules)
-      } catch (e: any) {
+      } catch (e: unknown) {
         setError(e.message || 'Failed to load schedules')
         setAllSchedules([])
       } finally {
